@@ -1901,7 +1901,12 @@ window.adminAddUser       = function(){ if(window._firebaseAdminAddUser)       w
 window.updateUserRole     = function(d,r){ if(window._firebaseUpdateUserRole)  window._firebaseUpdateUserRole(d,r); };
 window.toggleUserActive   = function(d,a){ if(window._firebaseToggleUserActive) window._firebaseToggleUserActive(d,a); };
 window.resetUserPassword  = function(e){ if(window._firebaseResetPassword)     window._firebaseResetPassword(e); };
-window.doLogout           = function(){ if(window._firebaseDoLogout)           window._firebaseDoLogout(); };
+window.doLogout = function(){ 
+  try {
+    if(window._auth) window._auth.signOut();
+    else if(window.firebase) window.firebase.auth().signOut();
+  } catch(e){ console.error(e); }
+};
 
 // ─── INIT ───
 renderAll();
@@ -1922,6 +1927,8 @@ const _fbConfig = {
 };
 firebase.initializeApp(_fbConfig);
 const _auth = firebase.auth();
+window._auth = _auth;
+window._firebaseDoLogout = function(){ _auth.signOut(); };
 const _db   = firebase.firestore();
 
 window.doLogin = async function(){
@@ -2086,12 +2093,12 @@ window._firebaseAdminAddUser = async function(){
   btn.disabled=true; btn.textContent='Criando…';
   try {
     // Cria via segunda instância para não deslogar o admin
-    const secondApp  = firebase.initializeApp(firebase.apps[0].options, 'sec-'+Date.now());
-    const secondAuth = secondApp.auth();
-    const cred = await secondAuth.createUserWithEmailAndPassword(email, pass);
+    const sec = firebase.initializeApp(_fbConfig, 'sec-'+Date.now());
+    const secAuth = sec.auth();
+    const cred = await secAuth.createUserWithEmailAndPassword(email, pass);
     await cred.user.updateProfile({displayName: name});
-    await secondAuth.signOut();
-    await secondApp.delete();
+    await secAuth.signOut();
+    await sec.delete();
     // Salva perfil no Firestore
     await _db.collection('Users').doc(cred.user.uid).set({
       uid:cred.user.uid, name, email, role, active:true, createdAt:new Date().toISOString()
