@@ -404,7 +404,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 
 /* Calendar day popup (click → task list) */
 .cal-popup {
-  position: fixed; z-index: 9999; background: var(--bg2); border: 1px solid var(--border2);
+  position: absolute; z-index: 9999; background: var(--bg2); border: 1px solid var(--border2);
   border-radius: var(--r2); padding: 0; font-size: 12px;
   box-shadow: var(--shadow); min-width: 220px; max-width: 260px;
   opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s;
@@ -1641,24 +1641,42 @@ function openCalPopup(dateStr, anchorEl) {
   }
 
   // Position popup near the clicked day cell
-  const rect = anchorEl.getBoundingClientRect();
-  const pw = 240, ph = 320;
+  const calGrid = document.getElementById('cal-grid');
+  const calWrap = calGrid ? calGrid.closest('.panel') : null;
   
-  // Calculate position relative to viewport (fixed positioning)
-  let left = rect.left + rect.width/2 - pw/2;
-  let top  = rect.bottom + 8;
+  if(calWrap) {
+    // Make panel relative for absolute positioning
+    calWrap.style.position = 'relative';
+    popup.style.position = 'absolute';
+    
+    const wrapRect = calWrap.getBoundingClientRect();
+    const rect = anchorEl.getBoundingClientRect();
+    
+    const pw = 240;
+    let left = rect.left - wrapRect.left + rect.width/2 - pw/2;
+    let top  = rect.bottom - wrapRect.top + 8;
+    
+    if(left + pw > calWrap.offsetWidth - 8) left = calWrap.offsetWidth - pw - 8;
+    if(left < 8) left = 8;
+    if(top + 300 > calWrap.offsetHeight) top = rect.top - wrapRect.top - 310;
+    if(top < 8) top = rect.bottom - wrapRect.top + 8;
+    
+    popup.style.left = Math.round(left)+'px';
+    popup.style.top  = Math.round(top)+'px';
+  } else {
+    // Fallback: fixed positioning
+    const rect = anchorEl.getBoundingClientRect();
+    const pw = 240;
+    let left = rect.left + rect.width/2 - pw/2;
+    let top  = rect.bottom + 8;
+    if(left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    if(left < 8) left = 8;
+    if(top + 300 > window.innerHeight - 8) top = rect.top - 310;
+    popup.style.position = 'fixed';
+    popup.style.left = Math.round(left)+'px';
+    popup.style.top  = Math.round(top)+'px';
+  }
   
-  // Keep within viewport bounds
-  if(left + pw > window.innerWidth - 8)  left = window.innerWidth - pw - 8;
-  if(left < 8) left = 8;
-  // If popup would go below viewport, show above the element
-  if(top + ph > window.innerHeight - 8) top = rect.top - ph - 8;
-  // Final safety check
-  if(top < 8) top = 8;
-  
-  popup.style.left = Math.round(left)+'px';
-  popup.style.top  = Math.round(top)+'px';
-  popup.style.position = 'fixed';
   popup.style.zIndex = '9999';
   popup.classList.add('show');
   calPopupOpen = true;
